@@ -1,0 +1,56 @@
+schemaVersion: 2.2.0
+metadata:
+  name: expense-approval-capstone
+
+components:
+  - name: dotnet
+    attributes:
+      pod-overrides:
+        spec:
+          securityContext:
+            fsGroup: 0
+      container-overrides:
+        securityContext:
+          privileged: true
+          allowPrivilegeEscalation: true
+          runAsNonRoot: true
+          runAsUser: 1000
+    container:
+      image: quay.io/daytwo/cloudnative-workshop-devtools:1.0
+      command: ["tail", "-f", "/dev/null"]
+      memoryLimit: 2Gi
+      mountSources: true
+      endpoints:
+        - name: expense-api
+          targetPort: 8080
+          exposure: public
+          protocol: https
+
+  - name: postgres
+    container:
+      image: registry.redhat.io/rhel9/postgresql-16:latest
+      memoryLimit: 512Mi
+      env:
+        - name: POSTGRESQL_DATABASE
+          value: expenses
+        - name: POSTGRESQL_USER
+          value: expenses
+        - name: POSTGRESQL_PASSWORD
+          value: "Expenses!2026"
+
+commands:
+  - id: fix-permissions
+    exec:
+      component: dotnet
+      commandLine: chmod -R g+w ${PROJECT_SOURCE}
+      workingDir: ${PROJECT_SOURCE}
+
+  - id: run
+    exec:
+      component: dotnet
+      commandLine: dotnet run
+      workingDir: ${PROJECT_SOURCE}
+
+events:
+  postStart:
+    - fix-permissions
